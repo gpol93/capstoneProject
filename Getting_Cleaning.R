@@ -10,6 +10,7 @@ if(require(openNLP)==FALSE)(install.packages("openNLP")); library(openNLP)
 if(require(RWeka)==FALSE)(install.packages("RWeka")); library(RWeka)
 if(require(RWekajars)==FALSE)(install.packages("RWekajars")); library(RWekajars)
 if(require(SnowballC)==FALSE)(install.packages("SnowballC")); library(SnowballC)
+if(require(quanteda)==FALSE)(install.packages("quanteda")); library(quanteda)
 if(require(qdap)==FALSE)(install.packages("qdap")); library(qdap)
 if(require(qdapDictionaries)==FALSE)(install.packages("qdapDictionaries")); library(qdapDictionaries)
 if(require(wordcloud)==FALSE)(install.packages("wordcloud")); library(wordcloud)
@@ -86,9 +87,9 @@ summary<-data.frame(dataSource = c("blogs", "news", "twitter"),
 #reproducibility
 
 set.seed(1604)
-sTwitter <- sample(twitter, size = 5000, replace = TRUE)
-sBlogs <- sample(blogs, size = 5000, replace = TRUE)
-sNews <- sample(news, size = 5000, replace = TRUE)
+sTwitter <- sample(twitter, size = 50, replace = TRUE)
+sBlogs <- sample(blogs, size = 50, replace = TRUE)
+sNews <- sample(news, size = 50, replace = TRUE)
 sampleTotal <- c(sTwitter, sBlogs, sNews)
 length(sampleTotal)
 writeLines(sampleTotal, "./projectData/dataFinalSample.txt")
@@ -120,6 +121,16 @@ corpus<- tm_map(corpus, content_transformer(tt))
 # Twitter Usernames
 tun<-function(x) gsub("[@][a - zA - Z0 - 9_]{1,15}", "", x)
 corpus<- tm_map(corpus, content_transformer(tun))
+#remove numbers and punctuation
+
+numb<-function(x) gsub('[[:digit:]]+', '', x)
+corpus<-tm_map(corpus,content_transformer(numb))
+punct<-function(x) gsub('[[:punct:]]+', '', x)
+corpus<-tm_map(corpus,content_transformer(punct))
+eq<-function(x) gsub("=", "", x)
+corpus<-tm_map(corpus,content_transformer(eq))
+alpha<-function(x) gsub("([[:alpha:]])\1+", "",x)
+corpus<-tm_map(corpus,content_transformer(alpha))
 # Text stemming
 corpus <- tm_map(corpus, stemDocument)
 
@@ -131,39 +142,116 @@ v <- sort(rowSums(as.matrix(tdm)),decreasing=TRUE)
 d <- data.frame(word = names(v),freq=v)
 head(d,5)
 g1 <- ggplot(data=d[1:5,], aes(x = word, y = freq))+
-     geom_bar(stat="identity") + coord_flip() + ggtitle("top 5 words")
+  geom_bar(stat="identity") + coord_flip() + ggtitle("top 5 words")
 
 set.seed(1234)
 wordcloud(words = d$word, freq = d$freq, min.freq = 1,
           max.words=200, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
 
-findAssocs(tdm, terms = "will", corlimit = 0.3)
+
 
 
 #Let's convert and save for further purposes
 corpus <- tm_map(corpus, PlainTextDocument)
 
 #Let's save it
-saveRDS(corpus, file = "./finaldata/cleanedCorpus.RData")
+saveRDS(corpus, file = "./projectData/cleanedCorpus.RData")
 
 
-#Nased on the final corpus let's generate the n-grams
+#Let's load it
+cleanCorpus<-readRDS("./projectData/cleanedCorpus.RData")
 
-bigram <-NGramTokenizer(corpus, Weka_control(min = 2, max = 2))
-trigram <- NGramTokenizer(corpus, Weka_control(min = 3, max = 3))
-quadgram <- NGramTokenizer(corpus, Weka_control(min = 4, max = 4))
-fivegram<-NGramTokenizer(corpus, Weka_control(min = 5, max = 5))
+fcorpus<-data.frame(text=unlist(sapply(cleanCorpus,`[`, "content")),stringsAsFactors = FALSE)
+
+corpusq<-corpus(fcorpus)
 
 
-bigram<-data.frame(table(bigram))
-trigram<-data.frame(table(trigram))
+bigram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
+                          remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
+                          remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
+                          ngrams = 2, concatenator = " ")
 
-gramPlot <- function(data, label) {
-  ggplot(data[1:30,], aes(reorder(word, -freq), freq)) +
-    labs(x = label, y = "Frequency") +
-    theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
-    geom_bar(stat = "identity", fill = I("blue"))
-}
 
-bigramPLot<-gramPlot(bigram)
+bigFreq<-dfm(bigram)
+
+bigFreq <- data.frame(words = featnames(bigFreq), freq= colSums(bigFreq), 
+                       row.names = NULL, sbingsAsFactors = FALSE)
+bigFreq<- bigFreq[order(bigFreq$freq,decreasing = TRUE),]
+
+plotBig <- ggplot(bigFreq[1:20,], aes(reorder(words, -freq), freq)) +
+  labs(x = "bi-gram", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
+  geom_bar(stat = "identity")
+
+
+
+
+
+trigram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
+                         remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
+                         remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
+                         ngrams = 3, concatenator = " ")
+
+
+trigFreq<-dfm(trigram)
+
+trigFreq <- data.frame(words = featnames(trigFreq), freq= colSums(trigFreq), 
+                      row.names = NULL, stringsAsFactors = FALSE)
+trigFreq<- trigFreq[order(trigFreq$freq,decreasing = TRUE),]
+
+plotTrig <- ggplot(trigFreq[1:20,], aes(reorder(words, -freq), freq)) +
+  labs(x = "tri-gram", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
+  geom_bar(stat = "identity")
+
+
+quadram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
+                          remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
+                          remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
+                          ngrams = 4, concatenator = " ")
+
+
+quadFreq<-dfm(quadram)
+
+quadFreq <- data.frame(words = featnames(quadFreq), freq= colSums(quadFreq), 
+                       row.names = NULL, squadngsAsFactors = FALSE)
+quadFreq<- quadFreq[order(quadFreq$freq,decreasing = TRUE),]
+
+plotQuad <- ggplot(quadFreq[1:20,], aes(reorder(words, -freq), freq)) +
+  labs(x = "quad-gram", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
+  geom_bar(stat = "identity")
+
+
+
+
+
+
+
+
+
+
+
+top<-topfeatures(v,50)
+l<-data.frame(top)
+bigram$words <- as.character(bigram$words)
+str2 <- strsplit(bigram$words,split=" ")
+bigram <- transform(bigram, 
+                    one = sapply(str2,"[[",1),   
+                    two = sapply(str2,"[[",2))
+bigram <- data.frame(word1 = bigram$one,word2 = bigram$two,freq = bigram$freq,stringsAsFactors=FALSE)
+
+## saving files 
+write.csv(bigram[bigram$freq > 1,],"bigram.csv",row.names=F)
+bigram <- read.csv("bigram.csv",stringsAsFactors = F)
+saveRDS(bigram,"bigram.RData")
+
+
+
+
+
+
+source("multiplotFunction.R")
+
+multiplot(plotBig,plotTrig,plotQuad,cols=2)
