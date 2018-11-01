@@ -162,23 +162,31 @@ saveRDS(corpus, file = "./projectData/cleanedCorpus.RData")
 #Let's load it
 cleanCorpus<-readRDS("./projectData/cleanedCorpus.RData")
 
+
+#Let's remove the extra content and convert it to a crpus to enable quanteda processing;
 fcorpus<-data.frame(text=unlist(sapply(cleanCorpus,`[`, "content")),stringsAsFactors = FALSE)
 
 corpusq<-corpus(fcorpus)
 
 
+
+#Let's generate the bigrams and re-applying the removal of some terms to ensure that our corpus is clean.
 bigram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
                           remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
                           remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
                           ngrams = 2, concatenator = " ")
 
 
+#Generating the sparse document feature matrix from the tokens
 bigFreq<-dfm(bigram)
+
+#From the dfm create aw word frequncy data frame and sort it
 
 bigFreq <- data.frame(words = featnames(bigFreq), freq= colSums(bigFreq), 
                        row.names = NULL, sbingsAsFactors = FALSE)
 bigFreq<- bigFreq[order(bigFreq$freq,decreasing = TRUE),]
 
+#Plot the top 20 most frequent bigrams
 plotBig <- ggplot(bigFreq[1:20,], aes(reorder(words, -freq), freq)) +
   labs(x = "bi-gram", y = "Frequency") +
   theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
@@ -187,54 +195,65 @@ plotBig <- ggplot(bigFreq[1:20,], aes(reorder(words, -freq), freq)) +
 
 
 
-
+#Let's generate the trigrams and re-applying the removal of some terms to ensure that our corpus is clean
 trigram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
                          remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
                          remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
                          ngrams = 3, concatenator = " ")
 
-
+#Generating the sparse document feature matrix from the tokens
 trigFreq<-dfm(trigram)
 
+#From the dfm create aw word frequncy data frame and sort it
 trigFreq <- data.frame(words = featnames(trigFreq), freq= colSums(trigFreq), 
                       row.names = NULL, stringsAsFactors = FALSE)
 trigFreq<- trigFreq[order(trigFreq$freq,decreasing = TRUE),]
 
+#Plot the top 20 most frequent trigrams
 plotTrig <- ggplot(trigFreq[1:20,], aes(reorder(words, -freq), freq)) +
   labs(x = "tri-gram", y = "Frequency") +
   theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
   geom_bar(stat = "identity")
 
-
+#Let's generate the quadgrams and re-applying the removal of some terms to ensure that our corpus is clean
 quadram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
                           remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
                           remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
                           ngrams = 4, concatenator = " ")
 
 
+#Generating the sparse document feature matrix from the tokens
 quadFreq<-dfm(quadram)
 
+
+#From the dfm create aw word frequncy data frame and sort it
 quadFreq <- data.frame(words = featnames(quadFreq), freq= colSums(quadFreq), 
                        row.names = NULL, squadngsAsFactors = FALSE)
 quadFreq<- quadFreq[order(quadFreq$freq,decreasing = TRUE),]
-
+#Plot the top 20 most frequent quadgrams
 plotQuad <- ggplot(quadFreq[1:20,], aes(reorder(words, -freq), freq)) +
   labs(x = "quad-gram", y = "Frequency") +
   theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
   geom_bar(stat = "identity")
 
+#enabling multiplot with ggplot
+
+source("multiplotFunction.R")
+
+#visualizing the results
+multiplot(plotBig,plotTrig,plotQuad,cols=2)
+
+
+
+#Let's save the the 3 files 
+saveRDS(bigFreq,"bigram.RData")
+saveRDS(trigFreq,"trigram.RData")
+saveRDS(quadFreq,"quadgram.RData")
 
 
 
 
 
-
-
-
-
-
-top<-topfeatures(v,50)
-l<-data.frame(top)
 bigram$words <- as.character(bigram$words)
 str2 <- strsplit(bigram$words,split=" ")
 bigram <- transform(bigram, 
@@ -252,6 +271,4 @@ saveRDS(bigram,"bigram.RData")
 
 
 
-source("multiplotFunction.R")
 
-multiplot(plotBig,plotTrig,plotQuad,cols=2)

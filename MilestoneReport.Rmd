@@ -1,7 +1,7 @@
 ---
 title: "Milestone Report- Capstone project"
 author: "Guillaume Polet"
-date: "11/09/2018""
+date: "01/11/2018""
 output:
   html_document: default
   md_document: default
@@ -125,9 +125,9 @@ As we could see above the size of the files is pretty large. The thing is that t
 #Since we are sampling (and there's some randomness in samling) we'll set seet to enable reproducibility
 
 set.seed(1604)
-sTwitter <- sample(twitter, size = 5000, replace = TRUE)
-sBlogs <- sample(blogs, size = 5000, replace = TRUE)
-sNews <- sample(news, size = 5000, replace = TRUE)
+sTwitter <- sample(twitter, size = 10000, replace = TRUE)
+sBlogs <- sample(blogs, size = 10000, replace = TRUE)
+sNews <- sample(news, size = 10000, replace = TRUE)
 sampleTotal <- c(sTwitter, sBlogs, sNews)
 length(sampleTotal)
 #Let's write it into a dedicated folder so that we can easily reuse it later without having to re-run the whole process
@@ -198,6 +198,140 @@ wordcloud<-wordcloud(words = d$word, freq = d$freq, min.freq = 1,
 ```
 
 
+Let's save the cleand corpus
+```{r saving, message=FALSE,warning=FALSE}
+#Let's convert and save for further purposes
+corpus <- tm_map(corpus, PlainTextDocument)
+
+#Let's save it
+saveRDS(corpus, file = "./projectData/cleanedCorpus.RData")
+```
+
+
+
+
 ## 6. Tokenization
 
-## 7.Next Milestones
+The next step consists in reading the text and breaking it into word and sentences and then getting the n-grams
+
+What is tokenization and n-grams?
+Because with this process the text is broken into units of meaning, the tokens.In the fields of computational linguistics and probability, an n-gram is a contiguous sequence of n items from a given sample of text or speech (source: Wikipedia). Hence bi-grams are combination of 2 words, tri-grams combination of 3 words,...
+
+In order to perform the tokenization and generate the n-grams we will use the package ** Quanteda **. USing the built-in functions of **Quanteda** to generate the bi-grams,tri-grams and quad-grams.
+
+
+
+### 6.1 Loading and preprocessing of the corpus
+
+```{r saving, message=FALSE,warning=FALSE}
+cleanCorpus<-readRDS("./projectData/cleanedCorpus.RData")
+#Let's remove the extra content and convert it to a crpus to enable quanteda processing;
+fcorpus<-data.frame(text=unlist(sapply(cleanCorpus,`[`, "content")),stringsAsFactors = FALSE)
+
+corpusq<-corpus(fcorpus)
+```
+
+
+### 6.2 n-grams and plot generation
+
+
+```{r ngrams, message=FALSE,warning=FALSE}
+#Let's generate the bigrams and re-applying the removal of some terms to ensure that our corpus is clean.
+bigram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
+                          remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
+                          remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
+                          ngrams = 2, concatenator = " ")
+
+
+#Generating the sparse document feature matrix from the tokens
+bigFreq<-dfm(bigram)
+
+#From the dfm create aw word frequncy data frame and sort it
+
+bigFreq <- data.frame(words = featnames(bigFreq), freq= colSums(bigFreq), 
+                       row.names = NULL, sbingsAsFactors = FALSE)
+bigFreq<- bigFreq[order(bigFreq$freq,decreasing = TRUE),]
+
+#Plot the top 20 most frequent bigrams
+plotBig <- ggplot(bigFreq[1:20,], aes(reorder(words, -freq), freq)) +
+  labs(x = "bi-gram", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
+  geom_bar(stat = "identity")
+
+
+
+
+#Let's generate the trigrams and re-applying the removal of some terms to ensure that our corpus is clean
+trigram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
+                         remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
+                         remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
+                         ngrams = 3, concatenator = " ")
+
+#Generating the sparse document feature matrix from the tokens
+trigFreq<-dfm(trigram)
+
+#From the dfm create aw word frequncy data frame and sort it
+trigFreq <- data.frame(words = featnames(trigFreq), freq= colSums(trigFreq), 
+                      row.names = NULL, stringsAsFactors = FALSE)
+trigFreq<- trigFreq[order(trigFreq$freq,decreasing = TRUE),]
+
+#Plot the top 20 most frequent trigrams
+plotTrig <- ggplot(trigFreq[1:20,], aes(reorder(words, -freq), freq)) +
+  labs(x = "tri-gram", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
+  geom_bar(stat = "identity")
+
+#Let's generate the quadgrams and re-applying the removal of some terms to ensure that our corpus is clean
+quadram<-quanteda::tokens(x=corpusq, what =c("word"), remove_numbers = TRUE,
+                          remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE,
+                          remove_twitter = TRUE, remove_hyphens = TRUE, remove_url = TRUE,
+                          ngrams = 4, concatenator = " ")
+
+
+#Generating the sparse document feature matrix from the tokens
+quadFreq<-dfm(quadram)
+
+
+#From the dfm create aw word frequncy data frame and sort it
+quadFreq <- data.frame(words = featnames(quadFreq), freq= colSums(quadFreq), 
+                       row.names = NULL, squadngsAsFactors = FALSE)
+quadFreq<- quadFreq[order(quadFreq$freq,decreasing = TRUE),]
+#Plot the top 20 most frequent quadgrams
+plotQuad <- ggplot(quadFreq[1:20,], aes(reorder(words, -freq), freq)) +
+  labs(x = "quad-gram", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
+  geom_bar(stat = "identity")
+```
+### 6.2 Vizualisation of the most frequent n-grams
+
+```{r vizu, message=FALSE,warning=FALSE}
+#enabling multiplot with ggplot
+
+source("multiplotFunction.R")
+
+#visualizing the results
+multiplot(plotBig,plotTrig,plotQuad,cols=2)
+```
+
+
+### 6.3 Saving the n-grams for further purposes
+
+```{r savingngrams, message=FALSE,warning=FALSE}
+#Let's save the the 3 files 
+saveRDS(bigFreq,"bigram.RData")
+saveRDS(trigFreq,"trigram.RData")
+saveRDS(quadFreq,"quadgram.RData")
+```
+
+## 7.Conclusion
+
+*  The different step from getting and cleaning the data to creating the n-grams are highly resources consuming for the computer in the NLP field. That's why decided to sample the different sources of data to enable a smooth processing of the text data.
+
+* There is some room to improve the quality of the cleaning and tokenization. WHichi will be critical fr the accuracy of the prediction.
+
+
+## 8. Next milestones
+
+* Build an interactive Shiny app where the user can give a word as an input and the output would be the predicted word and  a synonym (using word2vec) 
+* Develop the prediction algorithm implemented in Shiny app.
+* Create a deck of slides presenting the app
