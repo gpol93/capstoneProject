@@ -1,7 +1,7 @@
 ---
 title: "Milestone Report- Capstone project"
 author: "Guillaume Polet"
-date: "01/11/2018""
+date: "01/11/2018"
 output:
   html_document: default
   md_document: default
@@ -29,13 +29,14 @@ if(require(tm)==FALSE)(install.packages("tm")); library(tm)
 if(require(stringi)==FALSE)(install.packages("stringi")); library(stringi)
 if(require(NLP)==FALSE)(install.packages("NLP")); library(NLP)
 if(require(openNLP)==FALSE)(install.packages("openNLP")); library(openNLP)
-# if(require(RWeka)==FALSE)(install.packages("RWeka")); library(RWeka)
-# if(require(RWekajars)==FALSE)(install.packages("RWekajars")); library(RWekajars)
+if(require(RWeka)==FALSE)(install.packages("RWeka")); library(RWeka)
+if(require(RWekajars)==FALSE)(install.packages("RWekajars")); library(RWekajars)
 if(require(SnowballC)==FALSE)(install.packages("SnowballC")); library(SnowballC)
-# if(require(qdap)==FALSE)(install.packages("qdap")); library(qdap)
-# if(require(qdapDictionaries)==FALSE)(install.packages("qdapDictionaries"));library(qdapDictionaries)
+if(require(qdap)==FALSE)(install.packages("qdap")); library(qdap)
+if(require(qdapDictionaries)==FALSE)(install.packages("qdapDictionaries"));library(qdapDictionaries)
 if(require(wordcloud)==FALSE)(install.packages("wordcloud")); library(wordcloud)
 if(require(RColorBrewer)==FALSE)(install.packages("RColorBrewer")); library(RColorBrewer)
+if(require(quanteda)==FALSE)(install.packages("quanteda")); library(quanteda)
 ```
 
 ## 2. Getting and unzipping the data
@@ -114,6 +115,7 @@ summary<-data.frame(dataSource = c("blogs", "news", "twitter"),
                     NrWords = c(sB,sN,sT),
                     MeanNrWords = c(mB,mN,mT),
                     Size= c(sizeBlogs,sizeNews, sizeTwitter))
+summary
 ```
 
 
@@ -125,9 +127,9 @@ As we could see above the size of the files is pretty large. The thing is that t
 #Since we are sampling (and there's some randomness in samling) we'll set seet to enable reproducibility
 
 set.seed(1604)
-sTwitter <- sample(twitter, size = 10000, replace = TRUE)
-sBlogs <- sample(blogs, size = 10000, replace = TRUE)
-sNews <- sample(news, size = 10000, replace = TRUE)
+sTwitter <- sample(twitter, size = 5000, replace = TRUE)
+sBlogs <- sample(blogs, size = 5000,replace = TRUE)
+sNews <- sample(news, size = 5000, replace = TRUE)
 sampleTotal <- c(sTwitter, sBlogs, sNews)
 length(sampleTotal)
 #Let's write it into a dedicated folder so that we can easily reuse it later without having to re-run the whole process
@@ -223,12 +225,12 @@ In order to perform the tokenization and generate the n-grams we will use the pa
 
 ### 6.1 Loading and preprocessing of the corpus
 
-```{r saving, message=FALSE,warning=FALSE}
+```{r load, message=FALSE,warning=FALSE}
 cleanCorpus<-readRDS("./projectData/cleanedCorpus.RData")
 #Let's remove the extra content and convert it to a crpus to enable quanteda processing;
 fcorpus<-data.frame(text=unlist(sapply(cleanCorpus,`[`, "content")),stringsAsFactors = FALSE)
 
-corpusq<-corpus(fcorpus)
+corpusq<-quanteda::corpus(fcorpus)
 ```
 
 
